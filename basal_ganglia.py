@@ -10,7 +10,7 @@ from torch.utils.tensorboard import SummaryWriter
 NUM_ACTIONS = 3
 
 
-class DQN:
+class BasalGanglia:
     """
       Parameters:
         q_net:  Network used to predict q-values.

@@ -1,7 +1,7 @@
 import argparse
 import json
 
-from model import Cortex
+from cortex import Cortex
 
 parser = argparse.ArgumentParser()
 
@@ -17,6 +17,6 @@ def main(args):
 
     cortex = Cortex(config, args['tensorboard_path'])
 
+
 if __name__ == '__main__':
     main(args)
-

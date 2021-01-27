@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from dqn import DQN
+from basal_ganglia import BasalGanglia
 
 
 # TODO Add convolutional layer(s).
@@ -150,19 +150,19 @@ class Cortex:
                 nn.Linear(dqn_hidden_dim, 3 * num_stripes[index]),
             )
             dqn_optimizer = optim.SGD(dqn.parameters(), lr=config['lr'], momentum=config['momentum'])
-            dqn = DQN(dqn,
-                      target_dqn,
-                      dqn_optimizer,
-                      num_heads,
-                      actions_per_head,
-                      gamma=config['gamma'],
-                      batch_size=config['batch_size'],
-                      iter_before_train=config['iter_before_train'],
-                      eps=config['eps'],
-                      memory_buffer_size=config['memory_buffer_size'],
-                      replace_every_n=config['replace_every_n'],
-                      log_every_n=config['log_every_n'],
-                      tensorboard_path=tensorboard_path)  # TODO Join with subdir.
+            dqn = BasalGanglia(dqn,
+                               target_dqn,
+                               dqn_optimizer,
+                               num_heads,
+                               actions_per_head,
+                               gamma=config['gamma'],
+                               batch_size=config['batch_size'],
+                               iter_before_train=config['iter_before_train'],
+                               eps=config['eps'],
+                               memory_buffer_size=config['memory_buffer_size'],
+                               replace_every_n=config['replace_every_n'],
+                               log_every_n=config['log_every_n'],
+                               tensorboard_path=tensorboard_path)  # TODO Join with subdir.
 
             pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], dqn, config['alpha'])
             self.pfc_layers.append(pfc_layer)
