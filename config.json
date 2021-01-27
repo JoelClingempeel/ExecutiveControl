@@ -1,4 +1,8 @@
 {
+  "hidden_filters": 16,
+  "output_filters": 4,
+  "pooling_kernel_size": 2,
+  "kernel_sizes": [3,3,2,2],
   "num_stripes": [10, 5],
   "stripe_dim": [7, 3],
   "alpha": [0.2,0.2],

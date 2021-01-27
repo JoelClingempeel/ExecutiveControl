@@ -4,30 +4,43 @@ import torch.nn.functional as F
 
 from basal_ganglia import BasalGanglia
 
+NUM_CHANNELS = 3
+
 
 # TODO Add convolutional layer(s).
 class PosteriorCortex(nn.Module):
     """ Posterior cortex used for preprocessing inputs before passing to Pfc.
 
         Parameters:
-          input_dim:  Input dimension
-          output_dim:  Output dimension.
+          hidden_filters:  Number of hidden filters.
+          output_filters:  Number of filters comprising the final encoding.
+          pooling_kernel_size:  Size of kernel used in max pooling.
+          kernel_sizes:  List of kernel sizes (in order).
           optimizer:  Optimizer object used to train (as an autoencoder).
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
 
     """
-    def __init__(self, input_dim, output_dim, optimizer, criterion):
+    def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, optimizer, criterion):
         super(Stripe, self).__init__()
-        self.encode = nn.Linear(input_dim, output_dim)
-        self.decode = nn.Linear(output_dim, input_dim)
+        self.conv1 = nn.Conv2d(NUM_CHANNELS, hidden_filters, kernel_sizes[0])  
+        self.conv2 = nn.Conv2d(hidden_filters, output_filters, kernel_sizes[1])
+        self.pool = nn.MaxPool2d(pooling_kernel_size)
+       
+        #Decoder
+        self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2])
+        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, CHANNEL_SIZE, kernel_sizes[3])
         self.optimizer = optimizer
         self.criterion = criterion
 
     def encode(self, x):
-        return F.relu(self.encode(x))
+        x = F.relu(self.conv1(x))
+        x = self.pool(x)
+        x = F.relu(self.conv2(x))
+        return self.pool(x)
 
     def decode(self, x):
-        return F.relu(self.decode(x))
+        x = F.relu(self.t_conv1(x))
+        return F.relu(self.t_conv2(x))
        
     def forward(self, x):
         return self.decode(self.encode(x))
@@ -97,14 +110,13 @@ class PfcLayer:
          batch_size:  Size of a batch used to train each stripe.
 
     """
-    def __init__(self, stripe_class, stripe_dim, num_stripes, dqn, alpha, batch_size):
+    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim, dqn, alpha, batch_size):
         self.stripe_dim = stripe_dim
         self.num_stripes = num_stripes
         self.input_dim = input_dim
         self.dqn = dqn
         self.alpha = alpha
 
-        # TODO get input_dim
         self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, optimizer, criterion)
                         for _ in range(num_stripes)]
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
@@ -112,6 +124,7 @@ class PfcLayer:
         self.actions = [0 for _ in range(num_stripes)]
 
     def forward(self, data):
+        data = data.reshape(-1)
         self.actions = self.dqn.select_actions(data)
 
         self.prev_stripe_data = torch.tensor(self.stripe_data.tolist())  # Store previous state.
@@ -133,7 +146,6 @@ class PfcLayer:
     def train_dqn(self, task_reward):
         num_active_stripes = len([num for num in self.actions if num == 0])
         reward = task_reward - self.alpha * num_active_stripes
-        # TODO Verify if the below step should require calling .unsqueeze(0) on prev/curr stripe data.
         dqn.learn_from_experience(self.prev_stripe_data, self.action, reward, stripe_data)
 
 
@@ -147,19 +159,30 @@ class Cortex:
 
     """
     def __init__(self, config, tensorboard_path):
-        # TODO What input vals should be saved?
-        self.posterior_cortex = PosteriorCortex()
+    
+
+def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, optimizer, criterion):
+        # TODO Get criterion.
+        self.posterior_cortex = PosteriorCortex(configs['hidden_filters'],
+                                                configs['output_filters'],
+                                                configs['pooling_kernel_size'],
+                                                configs['kernel_sizes'],
+                                                posterior_cortex_optimizer,
+                                                criterion)
+
         num_stripes = [1] + config['num_stripes']
         stripe_dim = [posterior_output_dim] + config['stripe_dim']
+        input_dim = num_stripes[index - 1] * stripe_dim[index - 1]
+
         for index in range(1, len(num_stripes)):
           # Here the 0-th index refers to the posterior cortex output.
            dqn = nn.Sequential(
-                nn.Linear(num_stripes[index - 1] * stripe_dim[index - 1], dqn_hidden_dim),
+                nn.Linear(input_dim, dqn_hidden_dim),
                 nn.ReLU(),
                 nn.Linear(dqn_hidden_dim, 3 * num_stripes[index]),
             )
             target_dqn = nn.Sequential(
-                nn.Linear(num_stripes[index - 1] * stripe_dim[index - 1], dqn_hidden_dim),
+                nn.Linear(num_stripes[input_dim, dqn_hidden_dim),
                 nn.ReLU(),
                 nn.Linear(dqn_hidden_dim, 3 * num_stripes[index]),
             )
@@ -178,7 +201,7 @@ class Cortex:
                                log_every_n=config['log_every_n'],
                                tensorboard_path=tensorboard_path)  # TODO Join with subdir.
 
-            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], dqn, config['alpha'], config['batch_size'])
+            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], input_dim, dqn, config['alpha'], config['batch_size'])
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):
