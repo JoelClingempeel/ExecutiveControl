@@ -46,16 +46,20 @@ class Stripe(nn.Module):
         Parameters:
           input_dim:  Input dimension
           output_dim:  Output dimension.
+          batch_size:  Batch size used for training.
           optimizer:  Optimizer object used to train (as an autoencoder).
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
 
     """
-    def __init__(self, input_dim, output_dim, optimizer, criterion):
+    def __init__(self, input_dim, output_dim, batch_size, optimizer, criterion):
         super(Stripe, self).__init__()
         self.encode = nn.Linear(input_dim, output_dim)
         self.decode = nn.Linear(output_dim, input_dim)
+        self.batch_size = batch_size
         self.optimizer = optimizer
         self.criterion = criterion
+
+        self.batch = []
 
     def encode(self, x):
         return F.relu(self.encode(x))
@@ -67,11 +71,16 @@ class Stripe(nn.Module):
         return self.decode(self.encode(x))
 
     def train(self, x):  # TODO Implement logging system.
-        optimizer.zero_grad()
-        pred_x = self.forward(x)
-        loss = criterion(pred_x, x)
-        loss.backward()
-        optimizer.step()
+        self.batch.append(x)
+        # Cache inputs, and train when cache size matches desired batch size.
+        if len(self.batch) == self.batch_size:
+            data = torch.stack(self.batch, dim=0)
+            optimizer.zero_grad()
+            pred_data = self.forward(data)
+            loss = criterion(pred_data, data)
+            loss.backward()
+            optimizer.step()
+            self.batch = []
 
 
 class PfcLayer:
@@ -82,17 +91,22 @@ class PfcLayer:
          stripe_class:  Class used to create stripes - can be any class implementing the Stripe API below.
          stripe_dim:  Encoding dimension of each stripe. (Assumed consistent across layer.)
          num_stripes:  Number of stripes.
+         input_dim:  Dimension of input to Pfc layer across *all* stripes from the layer below.
          dqn:  DQN class object (see dqn.py).
          alpha:  Hyperparameter to control the penalty for having too many stripes active in a layer.
+         batch_size:  Size of a batch used to train each stripe.
 
     """
-    def __init__(self, stripe_class, stripe_dim, num_stripes, dqn, alpha):
+    def __init__(self, stripe_class, stripe_dim, num_stripes, dqn, alpha, batch_size):
         self.stripe_dim = stripe_dim
         self.num_stripes = num_stripes
+        self.input_dim = input_dim
         self.dqn = dqn
         self.alpha = alpha
 
-        self.stripes = [stripe_class() for _ in range(num_stripes)]
+        # TODO get input_dim
+        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, optimizer, criterion)
+                        for _ in range(num_stripes)]
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.actions = [0 for _ in range(num_stripes)]
@@ -164,7 +178,7 @@ class Cortex:
                                log_every_n=config['log_every_n'],
                                tensorboard_path=tensorboard_path)  # TODO Join with subdir.
 
-            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], dqn, config['alpha'])
+            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], dqn, config['alpha'], config['batch_size'])
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):
