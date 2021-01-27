@@ -7,6 +7,8 @@ import torch.nn as nn
 from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
+NUM_ACTIONS = 3
+
 
 class DQN:
     """
@@ -14,8 +16,7 @@ class DQN:
         q_net:  Network used to predict q-values.
         target_q_net:  Used to avoid too much "chasing a moving target" - typically duplicate of above.
         optimizer:  Optimizer.
-        num_heads:  Number of independent selections to be made.
-        actions_per_head:  Number of possibilities from which each head may choose.
+        num_stripes:  Number of independent selections to be made (one per stripe).
         gamma:  Discounting reward factor in Bellman equation.
         batch_size  Batch size.
         iter_before_train:  Number of iterations used to expand memory buffer before training may begin.
@@ -26,14 +27,13 @@ class DQN:
         tensorboard_path:  Directory used for tensorboard logging.
     
     """
-    def __init__(self, q_net, target_q_net, optimizer, num_heads=7, actions_per_head=3,
-                 gamma=.3, batch_size=8, iter_before_train=50, eps=.1, memory_buffer_size=100,
-                 replace_target_every_n=100, log_every_n=100, tensorboard_path='logs'):
+    def __init__(self, q_net, target_q_net, optimizer, num_stripes=7, gamma=.3, batch_size=8,
+                 iter_before_train=50, eps=.1, memory_buffer_size=100, replace_target_every_n=100,
+                 log_every_n=100, tensorboard_path='logs'):
         self.q_net = q_net
         self.target_q_net = target_q_net
         self.optimizer = optimizer
-        self.num_heads = num_heads
-        self.actions_per_head = actions_per_head
+        self.num_stripes = num_stripes
         self.gamma = gamma
         self.batch_size = batch_size
         self.iter_before_train = iter_before_train
@@ -42,7 +42,7 @@ class DQN:
         self.memory_buffer_size = memory_buffer_size
         self.replace_target_every_n = replace_target_every_n
         self.log_every_n = log_every_n
-        self.writer = SummaryWriter(os.path.join(tensorboard_path, TIMESTAMP))
+        self.writer = SummaryWriter(tensorboard_path)
         self.memory_buffer = []
         self.losses = []
         self.rewards = []
@@ -58,11 +58,11 @@ class DQN:
     def select_actions(self, state):
         if (len(self.memory_buffer) < self.iter_before_train or
                 random.uniform(0, 1) < self.eps):
-            return [random.randint(0, self.actions_per_head)
-                    for _ in range(self.num_heads)]
+            return [random.randint(0, NUM_ACTIONS)
+                    for _ in range(self.num_stripes)]
         else:
             q_vals = self.get_q_values(state.unsqueeze(0))
-            q_vals = q_vals.reshape(self.num_heads, self.actions_per_head)
+            q_vals = q_vals.reshape(self.num_stripes, NUM_ACTIONS)
             return torch.argmax(q_vals, dim=1).tolist()
 
     def train_iterate(self):
@@ -111,6 +111,3 @@ class DQN:
             if (iteration + 1) % self.replace_target_every_n == 0:
             self.target_q_net.load_state_dict(self.q_net.state_dict())
 
-
-
-solver.train(3000)

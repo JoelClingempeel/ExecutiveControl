@@ -1,0 +1,16 @@
+{
+  "num_stripes": [10, 5],
+  "stripe_dim": [7, 3],
+  "alpha": [0.2,0.2],
+  "lr": 0.01,
+  "momentum": [0.9,0.9],
+  "gamma": 0.5,
+  "batch_size": 4,
+  "iter_before_train": 200,
+  "eps": 0.2,
+  "memory_buffer_size": 1000,
+  "replace_every_n": 30,
+  "log_every_n": 300,
+  "tensorboard_path": "tboard",
+  "num_epochs": 12
+}

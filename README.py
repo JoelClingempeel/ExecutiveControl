@@ -1,0 +1,3 @@
+# Cortex
+
+Trains a neural net inspired by the cortex! Details coming soon...
