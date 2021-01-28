@@ -1,5 +1,5 @@
 import argparse
-import json
+import yaml
 
 from cortex import Cortex
 
@@ -12,8 +12,8 @@ args = vars(parser.parse_args())
 
 
 def main(args):
-    with open(args['config_file']) as f:
-        config = json.loads(f.read())
+    with open('config.yaml') as f:
+        config = yaml.load(f, Loader=yaml.FullLoader)
 
     cortex = Cortex(config, args['tensorboard_path'])
 

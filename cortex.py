@@ -117,6 +117,7 @@ class PfcLayer:
         self.dqn = dqn
         self.alpha = alpha
 
+        # TODO Get criteria / optimizers.
         self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, optimizer, criterion)
                         for _ in range(num_stripes)]
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
