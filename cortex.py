@@ -44,7 +44,7 @@ class PosteriorCortex(nn.Module):
     def forward(self, x):
         return self.decode(self.encode(x))
 
-    def train(self, x):  # TODO Implement logging system.
+    def train(self, x):
         optimizer.zero_grad()
         pred_x = self.forward(x)
         loss = criterion(pred_x, x)
@@ -61,17 +61,23 @@ class Stripe(nn.Module):
           batch_size:  Batch size used for training.
           optimizer:  Optimizer object used to train (as an autoencoder).
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
+          tensorboard_path:  Path to where tensorboard event files will be written.
+          log_every_n:  Log to tensorboard the loss after every log_every_n batches.
 
     """
-    def __init__(self, input_dim, output_dim, batch_size, optimizer, criterion):
+    def __init__(self, input_dim, output_dim, batch_size, optimizer, criterion, tensorboard_path, log_every_n):
         super(Stripe, self).__init__()
         self.encode = nn.Linear(input_dim, output_dim)
         self.decode = nn.Linear(output_dim, input_dim)
         self.batch_size = batch_size
         self.optimizer = optimizer
         self.criterion = criterion
+        self.log_every_n = log_every_n
 
         self.batch = []
+        self.file_writer = SummaryWriter(tensorboard_path)
+        self.losses = []
+        self.log_loss_count = 0
 
     def encode(self, x):
         return F.relu(self.encode(x))
@@ -82,7 +88,7 @@ class Stripe(nn.Module):
     def forward(self, x):
         return self.decode(self.encode(x))
 
-    def train(self, x):  # TODO Implement logging system.
+    def train(self, x):
         self.batch.append(x)
         # Cache inputs, and train when cache size matches desired batch size.
         if len(self.batch) == self.batch_size:
@@ -93,6 +99,13 @@ class Stripe(nn.Module):
             loss.backward()
             optimizer.step()
             self.batch = []
+            self.losses.append(loss.item())
+
+            if len(self.losses) == self.log_every_n:
+                self.file_writer.add_scalar('Loss', sum(self.losses) / len(self.losses), self.loss_log_count)
+                self.losses = []
+                self.writer.flush()
+                self.loss_log_count += 1
 
 
 class PfcLayer:
@@ -107,9 +120,12 @@ class PfcLayer:
          dqn:  DQN class object (see dqn.py).
          alpha:  Hyperparameter to control the penalty for having too many stripes active in a layer.
          batch_size:  Size of a batch used to train each stripe.
+         tensorboard_path:  Path to where tensorboard event files will be written.
+         log_every_n:  Log to tensorboard the loss after every log_every_n batches.
 
     """
-    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim, dqn, alpha, batch_size):
+    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim,
+                 dqn, alpha, batch_size, tensorboard_path, log_every_n):
         self.stripe_dim = stripe_dim
         self.num_stripes = num_stripes
         self.input_dim = input_dim
@@ -117,8 +133,9 @@ class PfcLayer:
         self.alpha = alpha
 
         # TODO Get criteria / optimizers.
-        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, optimizer, criterion)
-                        for _ in range(num_stripes)]
+        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, optimizer,
+                                     criterion, tensorboard_path + str(j), log_every_n)
+                        for j in range(num_stripes)]
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.actions = [0 for _ in range(num_stripes)]
@@ -159,9 +176,6 @@ class Cortex:
 
     """
     def __init__(self, config, tensorboard_path):
-    
-
-def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, optimizer, criterion):
         # TODO Get criterion.
         self.posterior_cortex = PosteriorCortex(configs['hidden_filters'],
                                                 configs['output_filters'],
@@ -199,9 +213,10 @@ def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_s
                                memory_buffer_size=config['memory_buffer_size'],
                                replace_every_n=config['replace_every_n'],
                                log_every_n=config['log_every_n'],
-                               tensorboard_path=tensorboard_path)  # TODO Join with subdir.
+                               tensorboard_path=os.path.join(tensorboard_path, f'dqn_{index}'))  # TODO Join with subdir.
 
-            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], input_dim, dqn, config['alpha'], config['batch_size'])
+            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], input_dim, dqn, config['alpha'], config['batch_size'],
+                                 os.path.join(tensorboard_path, f'stripe_{index}_'), config['log_every_n'])
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):
