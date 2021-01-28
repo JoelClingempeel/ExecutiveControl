@@ -7,7 +7,6 @@ from basal_ganglia import BasalGanglia
 NUM_CHANNELS = 3
 
 
-# TODO Add convolutional layer(s).
 class PosteriorCortex(nn.Module):
     """ Posterior cortex used for preprocessing inputs before passing to Pfc.
 
