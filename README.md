@@ -20,12 +20,12 @@ The network will then be repeatedly presented with sequences and will have to pr
 * For outputs, each shape will correspond to a stripe in the final layer, and this stripe being active will represent predicting that shape comes next.
 * The reward could be binary or could even include a penalty for incorrect guesses whereby it is better to abstain from guessing.
 
-###Planned extensions:
+### Planned extensions:
 * Introduce a noise parameter whereby with a fixed probability the network is shown a random shape instead of a shape in a pattern.
 * In parallel to the above, have simple patterns involve shape positions / sizes (e.g. following arithmetic progressions) which the network must also predict.
     - For this, the output stripe will have to actually predict a vector encoding positions / sizes.
 
-##Biological Inspiration
+## Biological Inspiration
 
 * Computational Cognitive Neuroscience (O'Reilly et al)
     - This book in chapter 10 describes the prefrontal cortex as a collection of miniature neural networks called stripes of which only a small number are active at any given time, and the activity of such stripes is gating the basal ganglia which learns from reinforcement learning.
