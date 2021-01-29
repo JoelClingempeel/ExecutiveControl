@@ -13,7 +13,10 @@ This project aims to train a neural network inspired by the interaction between 
 
 ## Task
 
-The initial task will be consist of initially choosing several shape sequences of fixed length (for example, red square -> green triangle -> orange rectangle). The network will then be repeatedly presented with sequences and will have to predict what comes next given partial inputs. The sequences will be presented as **images**, thereby forcing the network to learn to map images to symbols.
+The initial task will be consist of initially choosing several shape sequences of fixed length.
+* For example:  **red square -> green triangle -> orange rectangle**
+
+The network will then be repeatedly presented with sequences and will have to predict what comes next given partial inputs. The sequences will be presented as **images**, thereby forcing the network to learn to map images to symbols.
 * For outputs, each shape will correspond to a stripe in the final layer, and this stripe being active will represent predicting that shape comes next.
 * The reward could be binary or could even include a penalty for incorrect guesses whereby it is better to abstain from guessing.
 
