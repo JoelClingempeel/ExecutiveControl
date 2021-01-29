@@ -14,10 +14,10 @@ This project aims to train a neural network inspired by the interaction between 
 ## Task
 
 The initial task will be consist of initially choosing several shape sequences of fixed length (for example, red square -> green triangle -> orange rectangle). The network will then be repeatedly presented with sequences and will have to predict what comes next given partial inputs. The sequences will be presented as **images**, thereby forcing the network to learn to map images to symbols.
-    - For outputs, each shape will correspond to a stripe in the final layer, and this stripe being active will represent predicting that shape comes next.
-    - The reward could be binary or could even include a penalty for incorrect guesses whereby it is better to abstain from guessing.
+* For outputs, each shape will correspond to a stripe in the final layer, and this stripe being active will represent predicting that shape comes next.
+* The reward could be binary or could even include a penalty for incorrect guesses whereby it is better to abstain from guessing.
 
 Planned generalizations:
-    - Introduce a noise parameter whereby with a fixed probability the network is shown a random shape instead of a shape in a pattern.
-    - In parallel to the above, have simple patterns involve shape positions / sizes (e.g. following arithmetic progressions) which the network must also predict.
-        * For this, the output stripe will have to actually predict a vector encoding positions / sizes.
+* Introduce a noise parameter whereby with a fixed probability the network is shown a random shape instead of a shape in a pattern.
+* In parallel to the above, have simple patterns involve shape positions / sizes (e.g. following arithmetic progressions) which the network must also predict.
+    - For this, the output stripe will have to actually predict a vector encoding positions / sizes.
