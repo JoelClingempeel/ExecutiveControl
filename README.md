@@ -6,9 +6,9 @@ This project aims to train a neural network inspired by the interaction between 
 * `prefrontal cortex` - This is comprised of layers, and each layer is in turn comprised of a set of autoencoders (referred to here as stripes), each of which if active take as input the combined output from the previous layer.
 
 * `basal ganglia` - This consists of for each prefrontal cortex layer a multi-headed deep Q-network which for each stripe can output one of three decisions.
-    - **Inactive** - This sets the code layer of the stripe to be all zeros.
-    - **Read** - This updates the code layer of the stripe based on the input from the previous prefrontal cortex layer.
-    - **Maintain** - This keeps the code layer of the stripe as it is.
+    - `Inactive` - This sets the code layer of the stripe to be all zeros.
+    - `Read` - This updates the code layer of the stripe based on the input from the previous prefrontal cortex layer.
+    - `Maintain` - This keeps the code layer of the stripe as it is.
     - Each deep Q-network is trained based on a reward of the form r^{task} + alpha (# active stripes in layer) where alpha is a hyperparameter tuned to enforce sparsity across modules within a layer.
 
 ## Task
