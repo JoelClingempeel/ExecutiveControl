@@ -1,5 +1,9 @@
 # Cortex (work in progress)
 
+Special thanks to Gideon and Abdel for numerous helpful discussions! Also stumbling upon Gideon's [blog post](https://cs.stanford.edu/people/jcjohns/clevr/) on biologically inspired executive control helped to provide me with useful perspectives and got me to reach out.
+
+## Introduction
+
 This project aims to train a neural network inspired by the interaction between the cortex and the basal ganglia. Roughly speaking this involves the following three components:
 
 * `posterior cortex` - This is represented by a single autoencoder which serves as a preprocessing unit for input data.
@@ -39,3 +43,13 @@ The network will then be repeatedly presented with sequences and will have to pr
 * AHA! an ‘Artificial Hippocampal Algorithm’ for Episodic Machine Learning (Kowaldo, Ahmed, Rawlinson)
     - https://arxiv.org/pdf/1909.10340.pdf
     - This paper builds a neural network inspired by the hippocampus. The goal of this project can be viewed as creating an analog for the cortex / basal ganglia.
+
+## Future Directions
+
+* Use a fancier network for each stripe.
+    - Of particular interest would be the RSM (recurrent sparse memory) networks (https://arxiv.org/pdf/1905.11589.pdf) which would allow each stripe to model entire sequences. It is believed that macrocolumns in the neocortex play a similar role.
+    - Using capsule networks (https://arxiv.org/pdf/1710.09829.pdf) would also be quite interesting.
+* Test network against fancier tasks.
+    - A great example would be the Clevr dataset (https://cs.stanford.edu/people/jcjohns/clevr/) for answering questions about pictures of arrangements of three dimensional objects.
+* Sync with the architecture from the aha hippocampus paper above to allow for few shot learning.
+    - This should roughly correspond to the `complementary learning system` theory discussed in the neuroscience literature where the hippocampus acts as a short-term memory cache, and while it eventually loses each memory, those accessed often will be learned by the (much slower) learning rules of the cortex. Thereby the hippocampus allows one to hold onto important memories long enough the long term learning rules of the cortex to take effect. This is very roughly analogous to the memory hierarchy in computer science.
