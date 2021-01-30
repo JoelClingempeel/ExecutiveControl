@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from basal_ganglia import BasalGanglia
 
 NUM_CHANNELS = 3
+AUTOENCODER_CRITERION = nn.MSELoss()
 
 
 class PosteriorCortex(nn.Module):
@@ -15,11 +16,12 @@ class PosteriorCortex(nn.Module):
           output_filters:  Number of filters comprising the final encoding.
           pooling_kernel_size:  Size of kernel used in max pooling.
           kernel_sizes:  List of kernel sizes (in order).
-          optimizer:  Optimizer object used to train (as an autoencoder).
+          lr:  Learning used to train (as an autoencoder).
+          momentum:  Momentum used to train (as an autoencoder).
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
 
     """
-    def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, optimizer, criterion):
+    def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, lr, momentum, criterion):
         super(Stripe, self).__init__()
         self.conv1 = nn.Conv2d(NUM_CHANNELS, hidden_filters, kernel_sizes[0])  
         self.conv2 = nn.Conv2d(hidden_filters, output_filters, kernel_sizes[1])
@@ -28,7 +30,7 @@ class PosteriorCortex(nn.Module):
         #Decoder
         self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2])
         self.t_conv2 = nn.ConvTranspose2d(hidden_filters, CHANNEL_SIZE, kernel_sizes[3])
-        self.optimizer = optimizer
+        self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = criterion
 
     def encode(self, x):
@@ -59,18 +61,19 @@ class Stripe(nn.Module):
           input_dim:  Input dimension
           output_dim:  Output dimension.
           batch_size:  Batch size used for training.
-          optimizer:  Optimizer object used to train (as an autoencoder).
+          lr:  Learning used to train (as an autoencoder).
+          momentum:  Momentum used to train (as an autoencoder).
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
           tensorboard_path:  Path to where tensorboard event files will be written.
           log_every_n:  Log to tensorboard the loss after every log_every_n batches.
 
     """
-    def __init__(self, input_dim, output_dim, batch_size, optimizer, criterion, tensorboard_path, log_every_n):
+    def __init__(self, input_dim, output_dim, batch_size, lr, momentum, criterion, tensorboard_path, log_every_n):
         super(Stripe, self).__init__()
         self.encode = nn.Linear(input_dim, output_dim)
         self.decode = nn.Linear(output_dim, input_dim)
         self.batch_size = batch_size
-        self.optimizer = optimizer
+        self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = criterion
         self.log_every_n = log_every_n
 
@@ -120,20 +123,22 @@ class PfcLayer:
          dqn:  DQN class object (see dqn.py).
          alpha:  Hyperparameter to control the penalty for having too many stripes active in a layer.
          batch_size:  Size of a batch used to train each stripe.
+         lr:  Learning used to train (as an autoencoder).
+         momentum:  Momentum used to train (as an autoencoder).
          tensorboard_path:  Path to where tensorboard event files will be written.
          log_every_n:  Log to tensorboard the loss after every log_every_n batches.
+         criterion:  Criterion for measuring reconstruction loss of stripes.
 
     """
-    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim,
-                 dqn, alpha, batch_size, tensorboard_path, log_every_n):
+    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim, dqn, alpha
+                 batch_size, lr, momentum, tensorboard_path, log_every_n, criterion):
         self.stripe_dim = stripe_dim
         self.num_stripes = num_stripes
         self.input_dim = input_dim
         self.dqn = dqn
         self.alpha = alpha
 
-        # TODO Get criteria / optimizers.
-        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, optimizer,
+        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, lr, momentum,
                                      criterion, tensorboard_path + str(j), log_every_n)
                         for j in range(num_stripes)]
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
@@ -178,13 +183,14 @@ class Cortex:
 
     """
     def __init__(self, config, tensorboard_path):
-        # TODO Get criterion.
+        posterior_cortex_optimizer = optim.SGD(dqn.parameters(), lr=config['lr'], momentum=config['momentum'])
         self.posterior_cortex = PosteriorCortex(configs['hidden_filters'],
                                                 configs['output_filters'],
                                                 configs['pooling_kernel_size'],
                                                 configs['kernel_sizes'],
-                                                posterior_cortex_optimizer,
-                                                criterion)
+                                                lr,
+                                                momentum,
+                                                AUTOENCODER_CRITERION)
 
         num_stripes = [1] + config['num_stripes']
         stripe_dim = [posterior_output_dim] + config['stripe_dim']
@@ -215,10 +221,10 @@ class Cortex:
                                memory_buffer_size=config['memory_buffer_size'],
                                replace_every_n=config['replace_every_n'],
                                log_every_n=config['log_every_n'],
-                               tensorboard_path=os.path.join(tensorboard_path, f'dqn_{index}'))  # TODO Join with subdir.
+                               tensorboard_path=os.path.join(tensorboard_path, f'dqn_{index}'))
 
             pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], input_dim, dqn, config['alpha'], config['batch_size'],
-                                 os.path.join(tensorboard_path, f'stripe_{index}_'), config['log_every_n'])
+                                 os.path.join(tensorboard_path, f'stripe_{index}_'), config['log_every_n'], AUTOENCODER_CRITERION)
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):
