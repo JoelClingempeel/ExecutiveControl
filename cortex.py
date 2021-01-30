@@ -139,6 +139,7 @@ class PfcLayer:
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.actions = [0 for _ in range(num_stripes)]
+        self.train_stripes = True
 
     def forward(self, data):
         data = data.reshape(-1)
@@ -150,7 +151,8 @@ class PfcLayer:
                 self.stripe_data[index] = torch.zeros(self.stripe_dim)
             if self.actions[index] == 1:  # Read
                 self.stripe_data[index] = self.stripe[index].encode(data)
-                self.stripe[index].train(data)  # Train stripe (as autoencoder) on data.
+                if self.train_stripes:
+                    self.stripe[index].train(data)  # Train stripe (as autoencoder) on data.
             if self.actions[index] == 2:  # Maintain
                 continue
 
@@ -231,3 +233,8 @@ class Cortex:
     def train_basal_ganglia(self, reward):
         for layer in self.pfc_layers:
             layer.train_dqn(reward)
+
+    def toggle_stripe_train(train):  # Takes boolean input.
+        for layer in self.pfc_layers:
+            layer.train_stripes = train
+
