@@ -109,4 +109,5 @@ class BasalGanglia:
             self.reward_log_count += 1
 
             if (iteration + 1) % self.replace_target_every_n == 0:
-            self.target_q_net.load_state_dict(self.q_net.state_dict())
+                self.target_q_net.load_state_dict(self.q_net.state_dict())
+
