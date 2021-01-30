@@ -3,7 +3,7 @@ import pickle
 from torch.utils.data import DataLoader
 import yaml
 
-# from cortex import Cortex
+from cortex import Cortex
 
 parser = argparse.ArgumentParser()
 
@@ -13,7 +13,6 @@ parser.add_argument('--labels_path', type=str, default='data/labels')
 parser.add_argument('--tensorboard_path', type=str, default='tboard')
 
 args = vars(parser.parse_args())
-
 
 
 def get_data(images_path, labels_path, batch_size):
@@ -28,7 +27,6 @@ def get_data(images_path, labels_path, batch_size):
                       shuffle=True)
 
 
-
 def main(args):
     with open('config.yaml') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
@@ -39,8 +37,10 @@ def main(args):
         print(image.shape)
         print(label)
 
-    # cortex = Cortex(config, args['tensorboard_path'])
+    cortex = Cortex(config, args['tensorboard_path'])
+    cortex.train_posterior_cortex(dataset, config['num_pretrain_epochs'])
 
 
 if __name__ == '__main__':
     main(args)
+

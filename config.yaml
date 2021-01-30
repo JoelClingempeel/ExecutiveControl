@@ -8,6 +8,7 @@ tensorboard_path: tboard
 num_epochs: 12
 
 # Posterior cortex settings:
+num_pretrain_epochs: 12
 hidden_filters: 16
 output_filters: 4
 pooling_kernel_size: 2
