@@ -3,7 +3,7 @@ import pickle
 from torch.utils.data import DataLoader
 import yaml
 
-from cortex import Cortex
+# from cortex import Cortex
 
 parser = argparse.ArgumentParser()
 
@@ -27,20 +27,33 @@ def get_data(images_path, labels_path, batch_size):
                       shuffle=True)
 
 
+def pretrain_posterior_cortex(cortex, images_path, labels_path, batch_size, num_epochs):
+    dataset = get_data(images_path, labels_path, batch_size)
+    for _ in range(num_epochs):
+        for images, labels in dataset:
+            cortex.train_posterior_cortex(images)
+
+
+def train_cortex(cortex, images_path, labels_path):
+    # TODO Vectorize cortex operations so the batch size doesn't need to be set to 1.
+    dataset = get_data(args['images_path'], args['labels_path'], 1)
+    for image, label in dataset:
+        almost_pred_label = cortex.forward(image)
+        # TODO Compute actual label prediction.
+        # TODO For tasks with a continuous element, need to adjust reward below.
+        reward = 1 if pred_label == label else 0
+        cortex.train_basal_ganglia(reward)
+
+
 def main(args):
     with open('config.yaml') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    dataset = get_data(args['images_path'], args['labels_path'], config['batch_size'])
-
-    for image, label in dataset:
-        print(image.shape)
-        print(label)
-
     cortex = Cortex(config, args['tensorboard_path'])
-    cortex.train_posterior_cortex(dataset, config['num_pretrain_epochs'])
+    pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batcH_size'],
+                              config['num_pretrain_epochs'])
+    train_cortex(cortex, args['images_path'], args['labels_path'])
 
 
 if __name__ == '__main__':
     main(args)
-

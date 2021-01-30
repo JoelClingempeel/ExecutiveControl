@@ -225,8 +225,9 @@ class Cortex:
             data = stripe_layer.forward(data)
         return data
 
-    def pretrain_posterior_cortex(self, dataset, num_epochs):
-        for _ in range(num_epochs):
-            for images, _ in dataset:
-                self.posterior_cortex.train(images)
+    def train_posterior_cortex(self, dataset, num_epochs):
+        self.posterior_cortex.train(images)
 
+    def train_basal_ganglia(self, reward):
+        for layer in self.pfc_layers:
+            layer.train_dqn(reward)
