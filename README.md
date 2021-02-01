@@ -1,4 +1,4 @@
-# Cortex (work in progress)
+# Executive Control (work in progress)
 
 Special thanks to Gideon and Abdel for numerous helpful discussions! Also stumbling upon Gideon's [blog post](https://cerenaut.ai/2020/09/17/towards-biologically-inspired-executive-control/) on biologically inspired executive control helped to provide me with useful perspectives and got me to reach out.
 
