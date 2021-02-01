@@ -1,14 +1,12 @@
 # Overall settings:
-batch_size: 1
+batch_size: 4
 lr: 0.01
-momentum:
-  - 0.9
-  - 0.9
+momentum: 0.9
 tensorboard_path: tboard
-num_epochs: 12
+num_epochs: 1
 
 # Posterior cortex settings:
-num_pretrain_epochs: 12
+num_pretrain_epochs: 1
 hidden_filters: 16
 output_filters: 4
 pooling_kernel_size: 2

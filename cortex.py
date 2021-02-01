@@ -1,6 +1,10 @@
+import os
+
 import torch
+import torch.optim as optim
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.tensorboard import SummaryWriter
 
 from basal_ganglia import BasalGanglia
 
@@ -22,16 +26,16 @@ class PosteriorCortex(nn.Module):
 
     """
     def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, lr, momentum, criterion):
-        super(Stripe, self).__init__()
+        super(PosteriorCortex, self).__init__()
         self.conv1 = nn.Conv2d(NUM_CHANNELS, hidden_filters, kernel_sizes[0])  
         self.conv2 = nn.Conv2d(hidden_filters, output_filters, kernel_sizes[1])
         self.pool = nn.MaxPool2d(pooling_kernel_size)
        
         #Decoder
         self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2])
-        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, CHANNEL_SIZE, kernel_sizes[3])
+        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, NUM_CHANNELS, kernel_sizes[3])
         self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
-        self.criterion = criterion
+        self.criterion = AUTOENCODER_CRITERION
 
     def encode(self, x):
         x = F.relu(self.conv1(x))
@@ -47,9 +51,9 @@ class PosteriorCortex(nn.Module):
         return self.decode(self.encode(x))
 
     def train(self, x):
-        optimizer.zero_grad()
+        self.optimizer.zero_grad()
         pred_x = self.forward(x)
-        loss = criterion(pred_x, x)
+        loss = self.criterion(pred_x, x)
         loss.backward()
         optimizer.step()
 
@@ -130,7 +134,7 @@ class PfcLayer:
          criterion:  Criterion for measuring reconstruction loss of stripes.
 
     """
-    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim, dqn, alpha
+    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim, dqn, alpha,
                  batch_size, lr, momentum, tensorboard_path, log_every_n, criterion):
         self.stripe_dim = stripe_dim
         self.num_stripes = num_stripes
@@ -183,48 +187,53 @@ class Cortex:
 
     """
     def __init__(self, config, tensorboard_path):
-        posterior_cortex_optimizer = optim.SGD(dqn.parameters(), lr=config['lr'], momentum=config['momentum'])
-        self.posterior_cortex = PosteriorCortex(configs['hidden_filters'],
-                                                configs['output_filters'],
-                                                configs['pooling_kernel_size'],
-                                                configs['kernel_sizes'],
-                                                lr,
-                                                momentum,
+        # posterior_cortex_optimizer = optim.SGD(dqn.parameters(), lr=config['lr'], momentum=config['momentum'])
+        self.posterior_cortex = PosteriorCortex(config['hidden_filters'],
+                                                config['output_filters'],
+                                                config['pooling_kernel_size'],
+                                                config['kernel_sizes'],
+                                                config['lr'],
+                                                config['momentum'],
                                                 AUTOENCODER_CRITERION)
 
         num_stripes = [1] + config['num_stripes']
+        posterior_output_dim = 10  # TODO Compute this properly.
         stripe_dim = [posterior_output_dim] + config['stripe_dim']
-        input_dim = num_stripes[index - 1] * stripe_dim[index - 1]
 
+        dqn_hidden_dim = 7  # TODO Get in a more systematic way.
+
+        self.pfc_layers = []
         for index in range(1, len(num_stripes)):
-          # Here the 0-th index refers to the posterior cortex output.
-           dqn = nn.Sequential(
+            # Here the 0-th index refers to the posterior cortex output.
+            input_dim = num_stripes[index - 1] * stripe_dim[index - 1]
+            dqn = nn.Sequential(
                 nn.Linear(input_dim, dqn_hidden_dim),
                 nn.ReLU(),
                 nn.Linear(dqn_hidden_dim, 3 * num_stripes[index]),
             )
             target_dqn = nn.Sequential(
-                nn.Linear(num_stripes[input_dim, dqn_hidden_dim),
+                nn.Linear(input_dim, dqn_hidden_dim),
                 nn.ReLU(),
                 nn.Linear(dqn_hidden_dim, 3 * num_stripes[index]),
             )
             dqn_optimizer = optim.SGD(dqn.parameters(), lr=config['lr'], momentum=config['momentum'])
+
             dqn = BasalGanglia(dqn,
                                target_dqn,
                                dqn_optimizer,
-                               num_heads,
-                               actions_per_head,
+                               num_stripes[index],
                                gamma=config['gamma'],
                                batch_size=config['batch_size'],
                                iter_before_train=config['iter_before_train'],
                                eps=config['eps'],
                                memory_buffer_size=config['memory_buffer_size'],
-                               replace_every_n=config['replace_every_n'],
+                               replace_target_every_n=config['replace_every_n'],
                                log_every_n=config['log_every_n'],
                                tensorboard_path=os.path.join(tensorboard_path, f'dqn_{index}'))
 
             pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], input_dim, dqn, config['alpha'], config['batch_size'],
-                                 os.path.join(tensorboard_path, f'stripe_{index}_'), config['log_every_n'], AUTOENCODER_CRITERION)
+                                 config['lr'], config['momentum'], os.path.join(tensorboard_path, f'stripe_{index}_'),
+                                 config['log_every_n'], AUTOENCODER_CRITERION)
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):
@@ -233,7 +242,7 @@ class Cortex:
             data = stripe_layer.forward(data)
         return data
 
-    def train_posterior_cortex(self, dataset, num_epochs):
+    def train_posterior_cortex(self, images, num_epochs):
         self.posterior_cortex.train(images)
 
     def train_basal_ganglia(self, reward):

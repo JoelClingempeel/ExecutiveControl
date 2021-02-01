@@ -3,7 +3,7 @@ import pickle
 from torch.utils.data import DataLoader
 import yaml
 
-# from cortex import Cortex
+from cortex import Cortex
 
 parser = argparse.ArgumentParser()
 
@@ -31,7 +31,7 @@ def pretrain_posterior_cortex(cortex, images_path, labels_path, batch_size, num_
     dataset = get_data(images_path, labels_path, batch_size)
     for _ in range(num_epochs):
         for images, labels in dataset:
-            cortex.train_posterior_cortex(images)
+            cortex.train_posterior_cortex(images, num_epochs)
 
 
 def train_cortex(cortex, images_path, labels_path):
@@ -51,7 +51,7 @@ def main(args):
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     cortex = Cortex(config, args['tensorboard_path'])
-    pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batcH_size'],
+    pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
                               config['num_pretrain_epochs'])
     train_cortex(cortex, args['images_path'], args['labels_path'])
 
