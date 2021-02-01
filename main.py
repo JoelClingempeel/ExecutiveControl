@@ -38,8 +38,9 @@ def train_cortex(cortex, images_path, labels_path):
     # TODO Vectorize cortex operations so the batch size doesn't need to be set to 1.
     dataset = get_data(args['images_path'], args['labels_path'], 1)
     for image, label in dataset:
-        almost_pred_label = cortex.forward(image)
-        # TODO Compute actual label prediction.
+        cortex_output = cortex.forward(image)
+        # The predicted layer is the stripe from the final layer with the highest average activation.
+        pred_label = torch.argmax(torch.mean(cortex_output, dim=1)).item()
         # TODO For tasks with a continuous element, need to adjust reward below.
         reward = 1 if pred_label == label else 0
         cortex.train_basal_ganglia(reward)
