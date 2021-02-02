@@ -41,11 +41,15 @@ class PosteriorCortex(nn.Module):
         x = F.relu(self.conv1(x))
         x = self.pool(x)
         x = F.relu(self.conv2(x))
-        return self.pool(x)
+        x = self.pool(x)
+        print(f'Encoding shape {x.shape}')
+        return x
 
     def decode(self, x):
         x = F.relu(self.t_conv1(x))
-        return F.relu(self.t_conv2(x))
+        x = F.relu(self.t_conv2(x))
+        print(f'Decoding shape {x.shape}')
+        return x
        
     def forward(self, x):
         return self.decode(self.encode(x))
@@ -74,8 +78,8 @@ class Stripe(nn.Module):
     """
     def __init__(self, input_dim, output_dim, batch_size, lr, momentum, criterion, tensorboard_path, log_every_n):
         super(Stripe, self).__init__()
-        self.encode = nn.Linear(input_dim, output_dim)
-        self.decode = nn.Linear(output_dim, input_dim)
+        self.encode_layer = nn.Linear(input_dim, output_dim)
+        self.decode_layer = nn.Linear(output_dim, input_dim)
         self.batch_size = batch_size
         self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = criterion
@@ -87,10 +91,10 @@ class Stripe(nn.Module):
         self.log_loss_count = 0
 
     def encode(self, x):
-        return F.relu(self.encode(x))
+        return F.relu(self.encode_layer(x))
 
     def decode(self, x):
-        return F.relu(self.decode(x))
+        return F.relu(self.decode_layer(x))
        
     def forward(self, x):
         return self.decode(self.encode(x))
@@ -159,7 +163,7 @@ class PfcLayer:
             if self.actions[index] == 0:  # Inactive
                 self.stripe_data[index] = torch.zeros(self.stripe_dim)
             if self.actions[index] == 1:  # Read
-                self.stripe_data[index] = self.stripe[index].encode(data)
+                self.stripe_data[index] = self.stripes[index].encode(data)
                 if self.train_stripes:
                     self.stripe[index].train(data)  # Train stripe (as autoencoder) on data.
             if self.actions[index] == 2:  # Maintain
@@ -238,7 +242,7 @@ class Cortex:
 
     def forward(self, data):
         data = self.posterior_cortex(data)
-        for stripe_layer in self.stripe_layers:
+        for stripe_layer in self.pfc_layers:
             data = stripe_layer.forward(data)
         return data
 
