@@ -1,4 +1,6 @@
 import argparse
+import datetime
+import os
 import pickle
 import yaml
 
@@ -13,9 +15,10 @@ parser.add_argument('--config_file', type=str, default='config.json')
 parser.add_argument('--images_path', type=str, default='data/images')
 parser.add_argument('--labels_path', type=str, default='data/labels')
 parser.add_argument('--tensorboard_path', type=str, default='tboard')
-parser.add_argument('--max_images', type=int, default=12)  # For debugging - otherwise set to dataset size.
+parser.add_argument('--max_images', type=int, default=100)  # For debugging - otherwise set to dataset size.
 
 args = vars(parser.parse_args())
+
 
 
 def get_data(images_path, labels_path, batch_size, max_images):
@@ -73,7 +76,11 @@ def main(args):
     with open('config.yaml') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    cortex = Cortex(config, args['tensorboard_path'])
+    timestamp = str(datetime.datetime.now()).replace(' ', '_')
+    logging_path = os.path.join(args['tensorboard_path'], timestamp)
+    print(f'Now logging results to {logging_path}')
+
+    cortex = Cortex(config, logging_path)
     pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
                               config['num_pretrain_epochs'], args['max_images'])
     train_cortex(cortex, args['images_path'], args['labels_path'], config['num_colors'], args['max_images'])

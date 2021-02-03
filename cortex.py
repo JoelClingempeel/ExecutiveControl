@@ -104,10 +104,10 @@ class Stripe(nn.Module):
             self.losses.append(loss.item())
 
             if len(self.losses) == self.log_every_n:
-                self.file_writer.add_scalar('Loss', sum(self.losses) / len(self.losses), self.loss_log_count)
+                self.file_writer.add_scalar('Loss', sum(self.losses) / len(self.losses), self.log_loss_count)
                 self.losses = []
-                self.writer.flush()
-                self.loss_log_count += 1
+                self.file_writer.flush()
+                self.log_loss_count += 1
 
 
 class PfcLayer:

@@ -39,11 +39,13 @@ class BasalGanglia:
         self.replace_target_every_n = replace_target_every_n
         self.log_every_n = log_every_n
         self.writer = SummaryWriter(tensorboard_path)
+
         self.memory_buffer = []
         self.losses = []
         self.rewards = []
         self.loss_log_count = 0
         self.reward_log_count = 0
+        self.iteration = 1
 
     def get_q_values(self, state, use_target=False):
         if use_target:
@@ -104,5 +106,7 @@ class BasalGanglia:
             self.writer.flush()
             self.reward_log_count += 1
 
-            if (iteration + 1) % self.replace_target_every_n == 0:
-                self.target_q_net.load_state_dict(self.q_net.state_dict())
+        if (self.iteration + 1) % self.replace_target_every_n == 0:
+            self.target_q_net.load_state_dict(self.q_net.state_dict())
+        self.iteration += 1
+

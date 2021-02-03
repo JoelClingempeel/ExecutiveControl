@@ -3,11 +3,11 @@ batch_size: 4
 lr: 0.01
 momentum: 0.9
 tensorboard_path: tboard
-num_epochs: 1
+num_epochs: 3
 num_colors: 9
 
 # Posterior cortex settings:
-num_pretrain_epochs: 1
+num_pretrain_epochs: 3
 posterior_input_dim: 19200
 posterior_hidden_dim: 1000
 posterior_output_dim: 300
@@ -29,4 +29,4 @@ iter_before_train: 200
 eps: 0.2
 memory_buffer_size: 1000
 replace_every_n: 30
-log_every_n: 300
+log_every_n: 5
