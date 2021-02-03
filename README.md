@@ -33,8 +33,8 @@ The network will then be repeatedly presented with sequences and will have to pr
 
 * First run `generate_data.ipynb` to generate the task dataset; all adjustable parameters are in the second code block.
 * Then set architecture and training parameters in `config.yaml`.
-    - Be sure to make *num_colors* consistent with the value chosen when generating the dataset, and set *posterior_input_dim* to *3(number of pixels)*.
-    - Under the prefrontal cortex settings, *num_stripes*, *stripe_dim*, and *alpha* should each have one value **per stripe**.
+    - Be sure to make `num_colors` consistent with the value chosen when generating the dataset, and set `posterior_input_dim` to `3(number of pixels)`.
+    - Under the prefrontal cortex settings, `num_stripes`, `stripe_dim`, and `alpha` should each have one value **per stripe**.
 * Finally run `main.py`.
     - Set the flags `--config_file`, `images_path`, `labels_path` and `tensorboard_path` to the corresponding paths.
     - The `--max_images` flag is usually set to the dataset size, but setting it to a small value can be useful for testing.
