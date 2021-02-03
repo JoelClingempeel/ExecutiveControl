@@ -70,8 +70,8 @@ def main(args):
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     cortex = Cortex(config, args['tensorboard_path'])
-    # pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
-    #                           config['num_pretrain_epochs'])
+    pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
+                              config['num_pretrain_epochs'])
     train_cortex(cortex, args['images_path'], args['labels_path'], config['num_colors'])
 
 

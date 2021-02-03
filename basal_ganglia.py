@@ -86,7 +86,7 @@ class BasalGanglia:
         optimizer.step()
         self.losses.append(loss.item())
 
-    def learn_from_experience(prev_state, action, reward, curr_state):
+    def learn_from_experience(self, prev_state, action, reward, curr_state):
         self.rewards.append(reward)
 
         # Update memory buffer and (if applicable) train.

@@ -32,8 +32,8 @@ class PosteriorCortex(nn.Module):
         self.pool = nn.MaxPool2d(pooling_kernel_size, 2)
        
         #Decoder
-        self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2], stride=2)
-        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, NUM_CHANNELS, kernel_sizes[3], stride=2)
+        self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2], stride=4)
+        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, NUM_CHANNELS, kernel_sizes[3], stride=4)
         self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = AUTOENCODER_CRITERION
 
@@ -53,6 +53,8 @@ class PosteriorCortex(nn.Module):
     def train(self, x):
         self.optimizer.zero_grad()
         pred_x = self.forward(x)
+        print(pred_x.shape)
+        print(x.shape)
         loss = self.criterion(pred_x, x)
         loss.backward()
         self.optimizer.step()
@@ -100,11 +102,11 @@ class Stripe(nn.Module):
         # Cache inputs, and train when cache size matches desired batch size.
         if len(self.batch) == self.batch_size:
             data = torch.stack(self.batch, dim=0)
-            optimizer.zero_grad()
+            self.optimizer.zero_grad()
             pred_data = self.forward(data)
-            loss = criterion(pred_data, data)
-            loss.backward()
-            optimizer.step()
+            loss = self.criterion(pred_data, data)
+            loss.backward(retain_graph=True)
+            self.optimizer.step()
             self.batch = []
             self.losses.append(loss.item())
 
@@ -173,14 +175,8 @@ class PfcLayer:
 
     def train_dqn(self, task_reward):
         num_active_stripes = len([num for num in self.actions if num == 0])
-
-        print(task_reward)
-        print(self.alpha)
-        print(num_active_stripes)
-
-
         reward = task_reward - self.alpha * num_active_stripes
-        self.dqn.learn_from_experience(self.prev_stripe_data, self.action, reward, stripe_data)
+        self.dqn.learn_from_experience(self.prev_stripe_data, self.actions, reward, self.stripe_data)
 
 
 class Cortex:
