@@ -11,7 +11,7 @@ from cortex import Cortex
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--config_file', type=str, default='config.json')
+parser.add_argument('--config_file', type=str, default='config.yaml')
 parser.add_argument('--images_path', type=str, default='data/images')
 parser.add_argument('--labels_path', type=str, default='data/labels')
 parser.add_argument('--tensorboard_path', type=str, default='tboard')
@@ -73,7 +73,7 @@ def train_cortex(cortex, images_path, labels_path, num_colors, max_images):
 
 
 def main(args):
-    with open('config.yaml') as f:
+    with open(args['config_file']) as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     timestamp = str(datetime.datetime.now()).replace(' ', '_')
