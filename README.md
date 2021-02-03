@@ -13,7 +13,7 @@ This project aims to train a neural network inspired by the interaction between 
     - `Inactive` - This sets the code layer of the stripe to be all zeros.
     - `Read` - This updates the code layer of the stripe based on the input from the previous prefrontal cortex layer.
     - `Maintain` - This keeps the code layer of the stripe as it is.
-    - Each deep Q-network is trained based on a reward of the form r^{task} + alpha (# active stripes in layer) where alpha is a hyperparameter tuned to enforce sparsity across modules within a layer.
+    - Each deep Q-network is trained based on a reward of the form `r^{task} + alpha (# active stripes in layer)` where `alpha` is a hyperparameter tuned to enforce sparsity across modules within a layer.
 
 ## Task
 
