@@ -27,13 +27,13 @@ class PosteriorCortex(nn.Module):
     """
     def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, lr, momentum, criterion):
         super(PosteriorCortex, self).__init__()
-        self.conv1 = nn.Conv2d(NUM_CHANNELS, hidden_filters, kernel_sizes[0])  
-        self.conv2 = nn.Conv2d(hidden_filters, output_filters, kernel_sizes[1])
-        self.pool = nn.MaxPool2d(pooling_kernel_size)
+        self.conv1 = nn.Conv2d(NUM_CHANNELS, hidden_filters, kernel_sizes[0], stride=2)  
+        self.conv2 = nn.Conv2d(hidden_filters, output_filters, kernel_sizes[1], stride=2)
+        self.pool = nn.MaxPool2d(pooling_kernel_size, 2)
        
         #Decoder
-        self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2])
-        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, NUM_CHANNELS, kernel_sizes[3])
+        self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2], stride=2)
+        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, NUM_CHANNELS, kernel_sizes[3], stride=2)
         self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = AUTOENCODER_CRITERION
 
@@ -41,15 +41,11 @@ class PosteriorCortex(nn.Module):
         x = F.relu(self.conv1(x))
         x = self.pool(x)
         x = F.relu(self.conv2(x))
-        x = self.pool(x)
-        print(f'Encoding shape {x.shape}')
-        return x
+        return self.pool(x)
 
     def decode(self, x):
         x = F.relu(self.t_conv1(x))
-        x = F.relu(self.t_conv2(x))
-        print(f'Decoding shape {x.shape}')
-        return x
+        return F.relu(self.t_conv2(x))
        
     def forward(self, x):
         return self.decode(self.encode(x))
@@ -59,7 +55,7 @@ class PosteriorCortex(nn.Module):
         pred_x = self.forward(x)
         loss = self.criterion(pred_x, x)
         loss.backward()
-        optimizer.step()
+        self.optimizer.step()
 
 
 class Stripe(nn.Module):
@@ -165,11 +161,11 @@ class PfcLayer:
             if self.actions[index] == 1:  # Read
                 self.stripe_data[index] = self.stripes[index].encode(data)
                 if self.train_stripes:
-                    self.stripe[index].train(data)  # Train stripe (as autoencoder) on data.
+                    self.stripes[index].train(data)  # Train stripe (as autoencoder) on data.
             if self.actions[index] == 2:  # Maintain
                 continue
 
-        return torch.cat(self.stripe_data)
+        return self.stripe_data
 
     def reset_state(self):
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
@@ -177,8 +173,14 @@ class PfcLayer:
 
     def train_dqn(self, task_reward):
         num_active_stripes = len([num for num in self.actions if num == 0])
+
+        print(task_reward)
+        print(self.alpha)
+        print(num_active_stripes)
+
+
         reward = task_reward - self.alpha * num_active_stripes
-        dqn.learn_from_experience(self.prev_stripe_data, self.action, reward, stripe_data)
+        self.dqn.learn_from_experience(self.prev_stripe_data, self.action, reward, stripe_data)
 
 
 class Cortex:
@@ -201,8 +203,7 @@ class Cortex:
                                                 AUTOENCODER_CRITERION)
 
         num_stripes = [1] + config['num_stripes']
-        posterior_output_dim = 10  # TODO Compute this properly.
-        stripe_dim = [posterior_output_dim] + config['stripe_dim']
+        stripe_dim = [config['posterior_output_dim']] + config['stripe_dim']
 
         dqn_hidden_dim = 7  # TODO Get in a more systematic way.
 
@@ -235,13 +236,22 @@ class Cortex:
                                log_every_n=config['log_every_n'],
                                tensorboard_path=os.path.join(tensorboard_path, f'dqn_{index}'))
 
-            pfc_layer = PfcLayer(Stripe, stripe_dim[index], num_stripes[index], input_dim, dqn, config['alpha'], config['batch_size'],
-                                 config['lr'], config['momentum'], os.path.join(tensorboard_path, f'stripe_{index}_'),
-                                 config['log_every_n'], AUTOENCODER_CRITERION)
+            pfc_layer = PfcLayer(Stripe,
+                                 stripe_dim[index],
+                                 num_stripes[index],
+                                 input_dim,
+                                 dqn,
+                                 config['alpha'][index - 1],
+                                 config['batch_size'],
+                                 config['lr'],
+                                 config['momentum'],
+                                 os.path.join(tensorboard_path, f'stripe_{index}_'),
+                                 config['log_every_n'],
+                                 AUTOENCODER_CRITERION)
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):
-        data = self.posterior_cortex(data)
+        data = self.posterior_cortex.encode(data)
         for stripe_layer in self.pfc_layers:
             data = stripe_layer.forward(data)
         return data
@@ -253,7 +263,7 @@ class Cortex:
         for layer in self.pfc_layers:
             layer.train_dqn(reward)
 
-    def toggle_stripe_train(train):  # Takes boolean input.
+    def toggle_stripe_train(self, train):  # Takes boolean input.
         for layer in self.pfc_layers:
             layer.train_stripes = train
 

@@ -4,11 +4,13 @@ lr: 0.01
 momentum: 0.9
 tensorboard_path: tboard
 num_epochs: 1
+num_colors: 9
 
 # Posterior cortex settings:
 num_pretrain_epochs: 1
 hidden_filters: 16
 output_filters: 4
+posterior_output_dim: 1768
 pooling_kernel_size: 2
 kernel_sizes:
   - 3
@@ -19,7 +21,7 @@ kernel_sizes:
 # Prefrontal cortex settings:
 num_stripes:
   - 10
-  - 5
+  - 12
 stripe_dim:
   - 7
   - 3

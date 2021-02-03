@@ -1,7 +1,9 @@
 import argparse
 import pickle
-from torch.utils.data import DataLoader
 import yaml
+
+import torch
+from torch.utils.data import DataLoader
 
 from cortex import Cortex
 
@@ -34,15 +36,32 @@ def pretrain_posterior_cortex(cortex, images_path, labels_path, batch_size, num_
             cortex.train_posterior_cortex(images, num_epochs)
 
 
-def train_cortex(cortex, images_path, labels_path):
+def score_task(cortex_output, label, num_colors):
+    # TODO Generalize to allow for tasks with a continuous component.
+    num_colors = 9
+
+    avg_activations = torch.mean(cortex_output, dim=1)
+    # Here the first num_colors output stripes encode the color.
+    # The rest encode the number of sides.
+    pred_color = torch.argmax(avg_activations[:num_colors]).item()
+    pred_num_sides = torch.argmax(avg_activations[num_colors:]).item() + 3    
+
+    color = label[0, 0].item()
+    num_sides = label[0, 1].item() 
+
+    reward = 0
+    if pred_color == color:
+        reward += 1
+    if pred_num_sides == num_sides:
+        reward += 1
+    return reward
+
+def train_cortex(cortex, images_path, labels_path, num_colors):
     # TODO Vectorize cortex operations so the batch size doesn't need to be set to 1.
     dataset = get_data(args['images_path'], args['labels_path'], 1)
     for image, label in dataset:
         cortex_output = cortex.forward(image)
-        # The predicted layer is the stripe from the final layer with the highest average activation.
-        pred_label = torch.argmax(torch.mean(cortex_output, dim=1)).item()
-        # TODO For tasks with a continuous element, need to adjust reward below.
-        reward = 1 if pred_label == label else 0
+        reward = score_task(cortex_output, label, num_colors)
         cortex.train_basal_ganglia(reward)
 
 
@@ -51,9 +70,9 @@ def main(args):
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     cortex = Cortex(config, args['tensorboard_path'])
-    pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
-                              config['num_pretrain_epochs'])
-    train_cortex(cortex, args['images_path'], args['labels_path'])
+    # pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
+    #                           config['num_pretrain_epochs'])
+    train_cortex(cortex, args['images_path'], args['labels_path'], config['num_colors'])
 
 
 if __name__ == '__main__':
