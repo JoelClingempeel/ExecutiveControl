@@ -1,10 +1,6 @@
-import argparse
-import os
 import random
 
 import torch
-import torch.nn as nn
-from torch import optim
 from torch.utils.tensorboard import SummaryWriter
 
 NUM_ACTIONS = 3
@@ -110,4 +106,3 @@ class BasalGanglia:
 
             if (iteration + 1) % self.replace_target_every_n == 0:
                 self.target_q_net.load_state_dict(self.q_net.state_dict())
-

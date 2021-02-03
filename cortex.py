@@ -16,36 +16,31 @@ class PosteriorCortex(nn.Module):
     """ Posterior cortex used for preprocessing inputs before passing to Pfc.
 
         Parameters:
-          hidden_filters:  Number of hidden filters.
-          output_filters:  Number of filters comprising the final encoding.
-          pooling_kernel_size:  Size of kernel used in max pooling.
-          kernel_sizes:  List of kernel sizes (in order).
+          input_dim:  Input dimension.
+          hidden_dim:  Hidden dimension.
+          output_dim:  Output dimension.
           lr:  Learning used to train (as an autoencoder).
           momentum:  Momentum used to train (as an autoencoder).
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
 
     """
-    def __init__(self, hidden_filters, output_filters, pooling_kernel_size, kernel_sizes, lr, momentum, criterion):
+    def __init__(self, input_dim, hidden_dim, output_dim, lr, momentum, criterion):
         super(PosteriorCortex, self).__init__()
-        self.conv1 = nn.Conv2d(NUM_CHANNELS, hidden_filters, kernel_sizes[0], stride=2)  
-        self.conv2 = nn.Conv2d(hidden_filters, output_filters, kernel_sizes[1], stride=2)
-        self.pool = nn.MaxPool2d(pooling_kernel_size, 2)
-       
-        #Decoder
-        self.t_conv1 = nn.ConvTranspose2d(output_filters, hidden_filters, kernel_sizes[2], stride=4)
-        self.t_conv2 = nn.ConvTranspose2d(hidden_filters, NUM_CHANNELS, kernel_sizes[3], stride=4)
+        self.encode1 = nn.Linear(input_dim, hidden_dim)
+        self.encode2 = nn.Linear(hidden_dim, output_dim)
+ 
+        self.decode1 = nn.Linear(output_dim, hidden_dim)
+        self.decode2 = nn.Linear(hidden_dim, input_dim)
         self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = AUTOENCODER_CRITERION
 
     def encode(self, x):
-        x = F.relu(self.conv1(x))
-        x = self.pool(x)
-        x = F.relu(self.conv2(x))
-        return self.pool(x)
+        x = F.relu(self.encode1(x))
+        return F.relu(self.encode2(x))
 
     def decode(self, x):
-        x = F.relu(self.t_conv1(x))
-        return F.relu(self.t_conv2(x))
+        x = F.relu(self.decode1(x))
+        return F.relu(self.decode2(x))
        
     def forward(self, x):
         return self.decode(self.encode(x))
@@ -53,8 +48,6 @@ class PosteriorCortex(nn.Module):
     def train(self, x):
         self.optimizer.zero_grad()
         pred_x = self.forward(x)
-        print(pred_x.shape)
-        print(x.shape)
         loss = self.criterion(pred_x, x)
         loss.backward()
         self.optimizer.step()
@@ -64,7 +57,7 @@ class Stripe(nn.Module):
     """ Stripe used for preprocessing inputs inside a Pfc layer.
 
         Parameters:
-          input_dim:  Input dimension
+          input_dim:  Input dimension.
           output_dim:  Output dimension.
           batch_size:  Batch size used for training.
           lr:  Learning used to train (as an autoencoder).
@@ -190,10 +183,9 @@ class Cortex:
     """
     def __init__(self, config, tensorboard_path):
         # posterior_cortex_optimizer = optim.SGD(dqn.parameters(), lr=config['lr'], momentum=config['momentum'])
-        self.posterior_cortex = PosteriorCortex(config['hidden_filters'],
-                                                config['output_filters'],
-                                                config['pooling_kernel_size'],
-                                                config['kernel_sizes'],
+        self.posterior_cortex = PosteriorCortex(config['posterior_input_dim'],
+                                                config['posterior_hidden_dim'],
+                                                config['posterior_output_dim'],
                                                 config['lr'],
                                                 config['momentum'],
                                                 AUTOENCODER_CRITERION)
@@ -262,4 +254,3 @@ class Cortex:
     def toggle_stripe_train(self, train):  # Takes boolean input.
         for layer in self.pfc_layers:
             layer.train_stripes = train
-

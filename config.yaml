@@ -8,15 +8,9 @@ num_colors: 9
 
 # Posterior cortex settings:
 num_pretrain_epochs: 1
-hidden_filters: 16
-output_filters: 4
-posterior_output_dim: 1768
-pooling_kernel_size: 2
-kernel_sizes:
-  - 3
-  - 3
-  - 2
-  - 2
+posterior_input_dim: 19200
+posterior_hidden_dim: 1000
+posterior_output_dim: 300
 
 # Prefrontal cortex settings:
 num_stripes:
