@@ -20,7 +20,6 @@ parser.add_argument('--max_images', type=int, default=100)  # For debugging - ot
 args = vars(parser.parse_args())
 
 
-
 def get_data(images_path, labels_path, batch_size, max_images):
     with open(images_path, 'rb') as f:
         images = pickle.load(f)
@@ -63,13 +62,14 @@ def score_task(cortex_output, label, num_colors):
     return reward
 
 
-def train_cortex(cortex, images_path, labels_path, num_colors, max_images):
+def train_cortex(cortex, images_path, labels_path, num_colors, num_epochs, max_images):
     # TODO Vectorize cortex operations so the batch size doesn't need to be set to 1.
     dataset = get_data(args['images_path'], args['labels_path'], 1, max_images)
-    for image, label in dataset:
-        cortex_output = cortex.forward(image)
-        reward = score_task(cortex_output, label, num_colors)
-        cortex.train_basal_ganglia(reward)
+    for _ in range(num_epochs):
+        for image, label in dataset:
+            cortex_output = cortex.forward(image)
+            reward = score_task(cortex_output, label, num_colors)
+            cortex.train_basal_ganglia(reward)
 
 
 def main(args):
@@ -83,7 +83,8 @@ def main(args):
     cortex = Cortex(config, logging_path)
     pretrain_posterior_cortex(cortex, args['images_path'], args['labels_path'], config['batch_size'],
                               config['num_pretrain_epochs'], args['max_images'])
-    train_cortex(cortex, args['images_path'], args['labels_path'], config['num_colors'], args['max_images'])
+    train_cortex(cortex, args['images_path'], args['labels_path'], config['num_colors'], config['num_epochs'],
+                 args['max_images'])
 
 
 if __name__ == '__main__':

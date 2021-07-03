@@ -21,10 +21,9 @@ class PosteriorCortex(nn.Module):
           output_dim:  Output dimension.
           lr:  Learning used to train (as an autoencoder).
           momentum:  Momentum used to train (as an autoencoder).
-          criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
 
     """
-    def __init__(self, input_dim, hidden_dim, output_dim, lr, momentum, criterion):
+    def __init__(self, input_dim, hidden_dim, output_dim, lr, momentum):
         super(PosteriorCortex, self).__init__()
         self.encode1 = nn.Linear(input_dim, hidden_dim)
         self.encode2 = nn.Linear(hidden_dim, output_dim)
@@ -65,9 +64,19 @@ class Stripe(nn.Module):
           criterion:  Criterion used to measure reconstruction loss (as an autoencoder).
           tensorboard_path:  Path to where tensorboard event files will be written.
           log_every_n:  Log to tensorboard the loss after every log_every_n batches.
+          pfc_layer_index:  Tracks which layer in the PFC this stripe is found (for logging purposes).
 
     """
-    def __init__(self, input_dim, output_dim, batch_size, lr, momentum, criterion, tensorboard_path, log_every_n):
+    def __init__(self,
+                 input_dim,
+                 output_dim,
+                 batch_size,
+                 lr,
+                 momentum,
+                 criterion,
+                 tensorboard_path,
+                 log_every_n,
+                 pfc_layer_index):
         super(Stripe, self).__init__()
         self.encode_layer = nn.Linear(input_dim, output_dim)
         self.decode_layer = nn.Linear(output_dim, input_dim)
@@ -75,6 +84,7 @@ class Stripe(nn.Module):
         self.optimizer = optim.SGD(self.parameters(), lr=lr, momentum=momentum)
         self.criterion = criterion
         self.log_every_n = log_every_n
+        self.pfc_layer_index = pfc_layer_index
 
         self.batch = []
         self.file_writer = SummaryWriter(tensorboard_path)
@@ -104,7 +114,9 @@ class Stripe(nn.Module):
             self.losses.append(loss.item())
 
             if len(self.losses) == self.log_every_n:
-                self.file_writer.add_scalar('Loss', sum(self.losses) / len(self.losses), self.log_loss_count)
+                self.file_writer.add_scalar('Pfc Layer %d Losses' % self.pfc_layer_index,
+                                            sum(self.losses) / len(self.losses),
+                                            self.log_loss_count)
                 self.losses = []
                 self.file_writer.flush()
                 self.log_loss_count += 1
@@ -127,18 +139,31 @@ class PfcLayer:
          tensorboard_path:  Path to where tensorboard event files will be written.
          log_every_n:  Log to tensorboard the loss after every log_every_n batches.
          criterion:  Criterion for measuring reconstruction loss of stripes.
+         index:  Tracks the order of different Pfc layers in the cortex (for logging purposes).
 
     """
-    def __init__(self, stripe_class, stripe_dim, num_stripes, input_dim, dqn, alpha,
-                 batch_size, lr, momentum, tensorboard_path, log_every_n, criterion):
+    def __init__(self,
+                 stripe_class,
+                 stripe_dim,
+                 num_stripes,
+                 input_dim,
+                 dqn,
+                 alpha,
+                 batch_size,
+                 lr,
+                 momentum,
+                 tensorboard_path,
+                 log_every_n,
+                 criterion,
+                 index):
         self.stripe_dim = stripe_dim
         self.num_stripes = num_stripes
         self.input_dim = input_dim
         self.dqn = dqn
         self.alpha = alpha
 
-        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, lr, momentum,
-                                     criterion, tensorboard_path + str(j), log_every_n)
+        self.stripes = [stripe_class(input_dim, stripe_dim, batch_size, lr, momentum, criterion,
+                                     tensorboard_path + str(j), log_every_n, index)
                         for j in range(num_stripes)]
         self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
         self.stripe_data = torch.zeros(num_stripes, stripe_dim)
@@ -163,8 +188,8 @@ class PfcLayer:
         return self.stripe_data
 
     def reset_state(self):
-        self.prev_stripe_data = torch.zeros(num_stripes, stripe_dim)
-        self.stripe_data = torch.zeros(num_stripes, stripe_dim)
+        self.prev_stripe_data = torch.zeros(self.num_stripes, self.stripe_dim)
+        self.stripe_data = torch.zeros(self.num_stripes, self.stripe_dim)
 
     def train_dqn(self, task_reward):
         num_active_stripes = len([num for num in self.actions if num == 0])
@@ -187,8 +212,7 @@ class Cortex:
                                                 config['posterior_hidden_dim'],
                                                 config['posterior_output_dim'],
                                                 config['lr'],
-                                                config['momentum'],
-                                                AUTOENCODER_CRITERION)
+                                                config['momentum'])
 
         num_stripes = [1] + config['num_stripes']
         stripe_dim = [config['posterior_output_dim']] + config['stripe_dim']
@@ -235,7 +259,8 @@ class Cortex:
                                  config['momentum'],
                                  os.path.join(tensorboard_path, f'stripe_{index}_'),
                                  config['log_every_n'],
-                                 AUTOENCODER_CRITERION)
+                                 AUTOENCODER_CRITERION,
+                                 index)
             self.pfc_layers.append(pfc_layer)
 
     def forward(self, data):

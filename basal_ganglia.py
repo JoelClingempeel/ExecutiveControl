@@ -23,6 +23,7 @@ class BasalGanglia:
         tensorboard_path:  Directory used for tensorboard logging.
     
     """
+
     def __init__(self, q_net, target_q_net, optimizer, num_stripes=7, gamma=.3, batch_size=8,
                  iter_before_train=50, eps=.1, memory_buffer_size=100, replace_target_every_n=100,
                  log_every_n=100, tensorboard_path='logs'):
@@ -47,7 +48,7 @@ class BasalGanglia:
         self.reward_log_count = 0
         self.iteration = 1
 
-    def get_q_values(self, state, use_target=False):
+    def get_q_values(self, q_net_input, use_target=False):
         if use_target:
             return self.target_q_net(q_net_input)
         else:
@@ -66,7 +67,7 @@ class BasalGanglia:
     def train_iterate(self):
         samples = random.sample(self.memory_buffer, self.batch_size)
         loss = torch.tensor(0)
-        optimizer.zero_grad()
+        self.optimizer.zero_grad()
 
         for state, action, reward, new_state in samples:
             current_q_values = self.get_q_values(state).squeeze(0).reshape(-1, 3)
@@ -76,12 +77,11 @@ class BasalGanglia:
 
             future_q_values = self.get_q_values(new_state, use_target=True).detach().squeeze(0).reshape(-1, 3)
             future_q_value = torch.sum(torch.max(future_q_values, dim=1))  # TODO new_state or state?
-            
 
             loss += (current_q_value - (reward + self.gamma * future_q_value)) ** 2
 
         loss.backward(retain_graph=True)
-        optimizer.step()
+        self.optimizer.step()
         self.losses.append(loss.item())
 
     def learn_from_experience(self, prev_state, action, reward, curr_state):
@@ -95,13 +95,13 @@ class BasalGanglia:
             self.train_iterate()
 
         if len(self.losses) == self.log_every_n:
-            self.writer.add_scalar('Loss', sum(self.losses) / len(self.losses), self.loss_log_count)
+            self.writer.add_scalar('BG Loss', sum(self.losses) / len(self.losses), self.loss_log_count)
             self.losses = []
             self.writer.flush()
             self.loss_log_count += 1
 
         if len(self.rewards) == self.log_every_n:
-            self.writer.add_scalar('Reward', sum(self.rewards) / len(self.rewards), self.reward_log_count)
+            self.writer.add_scalar('BG Reward', sum(self.rewards) / len(self.rewards), self.reward_log_count)
             self.rewards = []
             self.writer.flush()
             self.reward_log_count += 1
@@ -109,4 +109,3 @@ class BasalGanglia:
         if (self.iteration + 1) % self.replace_target_every_n == 0:
             self.target_q_net.load_state_dict(self.q_net.state_dict())
         self.iteration += 1
-

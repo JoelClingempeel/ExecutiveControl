@@ -3,7 +3,7 @@ batch_size: 4
 lr: 0.01
 momentum: 0.9
 tensorboard_path: tboard
-num_epochs: 3
+num_epochs: 12
 num_colors: 9
 
 # Posterior cortex settings:
